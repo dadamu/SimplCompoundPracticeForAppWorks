@@ -98,12 +98,15 @@ interface CTokenInterface{
 
     /*** User Interface ***/
 
+    // ERC20
     function transfer(address dst, uint amount) external returns (bool);
     function transferFrom(address src, address dst, uint amount) external returns (bool);
     function approve(address spender, uint amount) external returns (bool);
     function allowance(address owner, address spender) external view returns (uint);
     function balanceOf(address owner) external view returns (uint);
     function balanceOfUnderlying(address owner) external returns (uint);
+
+    // Caculate tool
     function getAccountSnapshot(address account) external view returns (uint, uint, uint, uint);
     function borrowRatePerBlock() external view returns (uint);
     function supplyRatePerBlock() external view returns (uint);
