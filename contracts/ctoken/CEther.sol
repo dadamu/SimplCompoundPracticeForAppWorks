@@ -29,7 +29,6 @@ contract CEther is CToken {
         admin = msg.sender;
 
         initialize(comptroller_, interestRateModel_, initialExchangeRateMantissa_, name_, symbol_, decimals_);
-
         // Set the proper admin now that initialization is done
         admin = admin_;
     }
