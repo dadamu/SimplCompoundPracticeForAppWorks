@@ -44,7 +44,7 @@ async function main() {
 
   console.log("Setting oracle prices");
   await oracle.setUnderlyingPrice(cEther.address, ethers.utils.parseUnits("1", 18));
-  await oracle.setUnderlyingPrice(cTestCoin.address,  ethers.utils.parseUnits("1", 12));
+  await oracle.setUnderlyingPrice(cTestCoin.address,  ethers.utils.parseUnits("1", 18));
   await setComptroller(comptroller, cEther, cTestCoin);
 
   const etherPrice = await oracle.getUnderlyingPrice(cEther.address);
@@ -52,23 +52,24 @@ async function main() {
   const testCoinPrice = await oracle.getUnderlyingPrice(cTestCoin.address);
   console.log("TestCoin price:", testCoinPrice.toString());
 
-  await cEther.connect(borrower).mint({ value: 0 });
+  await cEther.connect(borrower).mint({ value: 1000 });
   balance = await cEther.balanceOf(borrower.address);
   console.log("Borrower supplied cEther balance", balance.toString());
 
     
   console.log("Admin Supply cTestCoin");
-  tx = await testCoin.approve(cTestCoin.address, ethers.utils.parseUnits("100", 6));
+  await testCoin.approve(cTestCoin.address, ethers.utils.parseUnits("100", 6));
   tx = await cTestCoin.mint(ethers.utils.parseUnits("100", 6));
-
   balance = await cTestCoin.balanceOf(admin.address);
   console.log("cTestCoin balance", balance.toString());
 
+  liquidity = await comptroller.getAccountLiquidity(borrower.address)
+  console.log("Borrower liquidity:", liquidity);
+
   balance = await testCoin.balanceOf(borrower.address);
   console.log("TestCoin balance of the borrower before borrowing", balance.toString());
-  await cTestCoin.connect(borrower).borrow(ethers.utils.parseUnits("0.5", 6));
-  await cTestCoin.connect(borrower).borrow(ethers.utils.parseUnits("0.5", 6));
-
+  const borrowTx = await cTestCoin.connect(borrower).borrow(ethers.utils.parseUnits("1", 10));
+  await checkFailure(borrowTx);
 
   balance = await testCoin.balanceOf(borrower.address);
   console.log("TestCoin balance of the borrower after borrowing", balance.toString());
@@ -141,7 +142,20 @@ async function setComptroller(comptroller, cEther, cTestCoin) {
   await comptroller._supportMarket(cEther.address);
   await comptroller._setCollateralFactor(cTestCoin.address,  ethers.utils.parseUnits("0.75", 18));
   await comptroller._setCollateralFactor(cEther.address,  ethers.utils.parseUnits("0.75", 18));
+  await comptroller._setCloseFactor(ethers.utils.parseUnits("0.5", 18));
   await comptroller.enterMarkets([cEther.address, cTestCoin.address]);
+}
+
+async function checkFailure(tx) {
+  let txResult = await tx.wait()
+  let failure = txResult.events.find(_ => _.event === 'Failure');
+  if (failure) {
+    const errorCode = failure.args.error;
+    throw new Error(
+      `See https://compound.finance/docs/ctokens#ctoken-error-codes\n` +
+      `Code: ${errorCode}\n`
+    );
+  }
 }
 
 // We recommend this pattern to be able to use async/await everywhere
