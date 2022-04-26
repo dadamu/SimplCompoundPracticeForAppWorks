@@ -34,13 +34,11 @@ async function main() {
   const cEther = await deployCEther(comptroller, interestRateModel, admin);
   console.log("CEther deployed to:", cEther.address);
 
-
   // Set TestCoin
   const testCoin = await deployTestCoin();
   console.log("TestCoin deployed to:", testCoin.address);
   const cTestCoin = await deployCTestCoin(testCoin, comptroller, interestRateModel);
   console.log("cTestCoin deployed to:", cTestCoin.address);
-
 
   console.log("Setting oracle prices");
   await oracle.setUnderlyingPrice(cEther.address, ethers.utils.parseUnits("1", 18));
@@ -52,31 +50,38 @@ async function main() {
   const testCoinPrice = await oracle.getUnderlyingPrice(cTestCoin.address);
   console.log("TestCoin price:", testCoinPrice.toString());
 
-  await cEther.connect(borrower).mint({ value: 1000 });
+  // Both admin and borrower joining markets are required
+  await comptroller.connect(borrower).enterMarkets([cEther.address, cTestCoin.address]);
+  await comptroller.connect(admin).enterMarkets([cEther.address, cTestCoin.address]);
+
+  await cEther.connect(borrower).mint({ value: ethers.utils.parseUnits("10", 18) });
   balance = await cEther.balanceOf(borrower.address);
   console.log("Borrower supplied cEther balance", balance.toString());
-
     
   console.log("Admin Supply cTestCoin");
-  await testCoin.approve(cTestCoin.address, ethers.utils.parseUnits("100", 6));
-  tx = await cTestCoin.mint(ethers.utils.parseUnits("100", 6));
+  await testCoin.approve(cTestCoin.address, ethers.utils.parseUnits("1000", 18));
+  tx = await cTestCoin.mint(ethers.utils.parseUnits("100", 18));
   balance = await cTestCoin.balanceOf(admin.address);
   console.log("cTestCoin balance", balance.toString());
 
-  liquidity = await comptroller.getAccountLiquidity(borrower.address)
-  console.log("Borrower liquidity:", liquidity);
-
   balance = await testCoin.balanceOf(borrower.address);
   console.log("TestCoin balance of the borrower before borrowing", balance.toString());
-  const borrowTx = await cTestCoin.connect(borrower).borrow(750);
+  const borrowTx = await cTestCoin.connect(borrower).borrow(ethers.utils.parseUnits("6", 18));
   await checkFailure(borrowTx);
 
   balance = await testCoin.balanceOf(borrower.address);
   console.log("TestCoin balance of the borrower after borrowing", balance.toString());
 
+  console.log("Set ether oracle price to be 1/2");
+  await oracle.setUnderlyingPrice(cEther.address, ethers.utils.parseUnits("0.5", 18));
 
-  console.log("Set cEther oracle price to be 1/100");
-  await oracle.setUnderlyingPrice(cEther.address, 1);
+  balance = await cEther.balanceOf(admin.address);
+  console.log("Liquidator balance before liquidating:", balance);
+  let liquidate = await cTestCoin.connect(admin).liquidateBorrow(borrower.address, ethers.utils.parseUnits("3", 18), cEther.address);
+  await checkFailure(liquidate);
+  await cEther.accrueInterest();
+  balance = await cEther.balanceOf(admin.address);
+  console.log("Liquidator balance after liquidating:", balance);
 }
 
 async function deployComptroller() {
@@ -143,7 +148,7 @@ async function setComptroller(comptroller, cEther, cTestCoin) {
   await comptroller._setCollateralFactor(cTestCoin.address,  ethers.utils.parseUnits("0.75", 18));
   await comptroller._setCollateralFactor(cEther.address,  ethers.utils.parseUnits("0.75", 18));
   await comptroller._setCloseFactor(ethers.utils.parseUnits("0.5", 18));
-  await comptroller.enterMarkets([cEther.address, cTestCoin.address]);
+  await comptroller._setLiquidationIncentive(ethers.utils.parseUnits("0.5", 18));
 }
 
 async function checkFailure(tx) {
