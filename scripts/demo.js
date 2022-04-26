@@ -68,7 +68,7 @@ async function main() {
 
   balance = await testCoin.balanceOf(borrower.address);
   console.log("TestCoin balance of the borrower before borrowing", balance.toString());
-  const borrowTx = await cTestCoin.connect(borrower).borrow(ethers.utils.parseUnits("1", 10));
+  const borrowTx = await cTestCoin.connect(borrower).borrow(750);
   await checkFailure(borrowTx);
 
   balance = await testCoin.balanceOf(borrower.address);
@@ -105,7 +105,7 @@ async function deployCEther(comptroller, interestRateModel, admin) {
   const cEther = await CEther.deploy(
         comptroller.address,
         interestRateModel.address, 
-        "1",
+        ethers.utils.parseUnits("1", 18),
         "CEther",
         "cETH",
         8,
@@ -128,7 +128,7 @@ async function deployCTestCoin(testCoin, comptroller, interestRateModel) {
     testCoin.address,
     comptroller.address,
     interestRateModel.address,
-    "1",
+    ethers.utils.parseUnits("1", 18),
     "CTestToken", 
     "CTT", 
     8
