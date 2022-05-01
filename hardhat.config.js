@@ -20,16 +20,33 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 module.exports = {
   networks: {
     hardhat: {
+      forking: {
+        url: secret.url,
+      },
       allowUnlimitedContractSize: true
-    }
+    },
+   
   },
   solidity: {
-    version: "0.5.16",
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 200
-      }
-    }
+    compilers: [
+        {
+          version: "0.5.16",
+          settings: {
+            optimizer: {
+              enabled: true,
+              runs: 200
+            }
+          }
+      },
+      {
+        version: "0.6.6",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200
+          }
+        }
+    },
+    ]
   },
 };
