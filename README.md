@@ -2,7 +2,7 @@
 
 ## Setting
 
-Ddd secret.json
+Add secret.json
 ```json
 {
     "url": "https://kovan.infura.io/v3/<your-api-key>",
